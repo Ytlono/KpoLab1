@@ -1,0 +1,6 @@
+mode	PREDICTED: similar to double homeobox
+search	LKSQ
+diff	C-FLIP AMPA glutamate	6.8 kDa mitochondrial proteolipid
+mode	Lsm3 protein
+diff	Lsm3 protein	Drosophila melanogaster [Fragment]
+search	TPRFGKTFDA

@@ -1,0 +1,219 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace GeneticsProject
+{
+    public struct GeneticData
+    {
+        public string name; // protein name
+        public string organism;
+        public string formula; // formula
+    }
+
+    class Program
+    {
+        static List<GeneticData> data = new List<GeneticData>();
+
+        static string GetFormula(string proteinName)
+        {
+            foreach (var item in data)
+            {
+                if (item.name.Equals(proteinName)) return item.formula;
+            }
+            return null;
+        }
+
+        static void ReadGeneticData(string filename)
+        {
+            StreamReader reader = new StreamReader(filename);
+            while (!reader.EndOfStream)
+            {
+                string line = reader.ReadLine();
+                string[] fragments = line.Split('\t');
+                GeneticData protein;
+                protein.name = fragments[0];
+                protein.organism = fragments[1];
+                protein.formula = fragments[2];
+                data.Add(protein);
+            }
+            reader.Close();
+        }
+
+        static void ReadHandleCommands(string filename, string filepath)
+        {
+            StreamReader reader = new StreamReader(filename);
+            int counter = 0;
+            while (!reader.EndOfStream)
+            {
+                string line = reader.ReadLine();
+                counter++;
+                string[] command = line.Split('\t');
+                File.AppendAllText(filepath, $"{counter.ToString("D3")}   {command[0]}   {string.Join(' ', command[1..])}\n");
+
+                switch (command[0])
+                {
+                    case "search":
+                        PerformSearch(command[1], filepath);
+                        break;
+                    case "diff":
+                        PerformDiff(command[1], command[2], filepath);
+                        break;
+                    case "mode":
+                        PerformMode(command[1], filepath);
+                        break;
+                }
+
+                File.AppendAllText(filepath, "--------------------------------------------------------------------------\n");
+            }
+            reader.Close();
+        }
+
+        static void PerformSearch(string amino_acid, string filepath)
+        {
+            string decoded = Decoding(amino_acid);
+            int index = Search(decoded);
+            if (index != -1)
+            {
+                var protein = data[index];
+                File.AppendAllText(filepath, $"organism\t\t\tprotein\n{protein.organism}\t\t{protein.name}\n");
+            }
+            else
+            {
+                File.AppendAllText(filepath, "NOT FOUND\n");
+            }
+        }
+
+        static void PerformDiff(string protein1, string protein2, string filepath)
+        {
+            int diffCount = Diff(protein1, protein2);
+            if (diffCount != -1)
+                File.AppendAllText(filepath, $"amino-acids difference: {diffCount}\n");
+            else
+                File.AppendAllText(filepath, $"MISSING: {protein1} or {protein2}\n");
+        }
+
+        static void PerformMode(string proteinName, string filepath)
+        {
+            var modeResult = Mode(proteinName);
+            if (modeResult != null)
+                File.AppendAllText(filepath, $"amino-acid occurs:\n{modeResult.Item1}\t\t{modeResult.Item2}\n");
+            else
+                File.AppendAllText(filepath, $"MISSING: {proteinName}\n");
+        }
+
+        static string Decoding(string formula)
+        {
+            string decoded = string.Empty;
+            for (int i = 0; i < formula.Length; i++)
+            {
+                if (char.IsDigit(formula[i]))
+                {
+                    char letter = formula[i + 1];
+                    int conversion = formula[i] - '0';
+                    decoded += new string(letter, conversion);
+                    i++; // Пропускаем следующий символ, так как он уже учтен
+                }
+                else
+                {
+                    decoded += formula[i];
+                }
+            }
+            return decoded;
+        }
+
+        static int Search(string decoded_amino_acid)
+        {
+            for (int i = 0; i < data.Count; i++)
+            {
+                if (data[i].formula.Contains(decoded_amino_acid)) return i;
+            }
+            return -1;
+        }
+
+        static int Diff(string protein1, string protein2)
+        {
+            string sequence1 = GetFormula(protein1);
+            string sequence2 = GetFormula(protein2);
+
+            if (sequence1 == null || sequence2 == null)
+                return -1; // Один из белков не найден
+
+            int minLength = Math.Min(sequence1.Length, sequence2.Length);
+            int diffCount = 0;
+
+            for (int i = 0; i < minLength; i++)
+            {
+                if (sequence1[i] != sequence2[i])
+                    diffCount++;
+            }
+
+            // Добавляем разницу в длине последовательностей к счетчику различий
+            diffCount += Math.Abs(sequence1.Length - sequence2.Length);
+
+            return diffCount;
+        }
+
+        static string Mode(string proteinName)
+        {
+            string formula = GetFormula(proteinName);
+            if (formula == null) return $"MISSING: {proteinName}";
+
+            Dictionary<char, int> countDict = new Dictionary<char, int>();
+
+            foreach (char ch in formula)
+            {
+                if (countDict.ContainsKey(ch))
+                    countDict[ch]++;
+                else
+                    countDict[ch] = 1;
+            }
+
+            char mostFrequent = '\0';
+            int maxCount = 0;
+
+            foreach (var item in countDict)
+            {
+                if (item.Value > maxCount || (item.Value == maxCount && item.Key < mostFrequent))
+                {
+                    mostFrequent = item.Key;
+                    maxCount = item.Value;
+                }
+            }
+
+            return $"amino-acid occurs: {mostFrequent} {maxCount}";
+        }
+
+        static void functions(string filepath, string fileNameSeq, string fileNameCom)
+        {
+            ReadGeneticData(fileNameSeq);
+            File.WriteAllText(filepath, "=============Search===================\n");
+            ReadHandleCommands(fileNameCom, filepath);
+            File.AppendAllText(filepath, "=============Get Formula of the Protein===================\n");
+
+            string formula = GetFormula("6.8 kDa mitochondrial proteolipid");
+            if (formula != null) File.AppendAllText(filepath, formula + "\n");
+        }
+
+        static void Main(string[] args)
+        {
+            string filepath1 = @"genedata0.txt";
+            string filepath2 = @"genedata1.txt";
+            string filepath3 = @"genedata2.txt";
+
+            string fileNameSeq1 = @"..\..\..\sequences.0.txt";
+            string fileNameSeq2 = @"..\..\..\sequences.1.txt";
+            string fileNameSeq3 = @"..\..\..\sequences.2.txt";
+
+            string fileNameCom1 = @"..\..\..\commands.0.txt";
+            string fileNameCom2 = @"..\..\..\commands.1.txt";
+            string fileNameCom3 = @"..\..\..\commands.2.txt";
+
+            functions(filepath1, fileNameSeq1, fileNameCom1);
+            functions(filepath2, fileNameSeq2, fileNameCom2);
+            functions(filepath3, fileNameSeq3, fileNameCom3);
+
+        }
+    }
+}
+

@@ -1,0 +1,8 @@
+search	SIIK
+search	PLML
+search	FK3I
+diff	6.8 kDa mitochondrial proteolipid	Alcohol dehydrogenase
+diff	RNA-dependent RNA polymerase [Fragment]	Alcohol dehydrogenase
+diff	Cecropin	Pre-T/NK cell associated protein 6H9A
+mode	Cecropin
+mode	Alcohol dehydrogenase
